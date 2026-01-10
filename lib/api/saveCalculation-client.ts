@@ -36,9 +36,14 @@ export async function saveCalculationClient(calculation: CalculationData) {
 
   if (profileError) throw profileError
 
+  if (!profile) {
+    throw new Error('Perfil de usuario no encontrado')
+  }
+
   // Límite Free
-  if (!profile?.is_pro && (profile?.calculations_count || 0) >= 3) {
-    throw new Error('Límite alcanzado. Actualiza a Pro.')
+  const profileData = profile as { is_pro: boolean; calculations_count: number }
+  if (!profileData.is_pro && profileData.calculations_count >= 3) {
+    throw new Error('Límite alcanzado. Actualiza a Pro')
   }
 
   // Guardar cálculo
@@ -52,12 +57,8 @@ export async function saveCalculationClient(calculation: CalculationData) {
   if (insertError) throw insertError
 
   // Incrementar contador
-  const { error: updateError } = await supabase
-    .from('user_profiles')
-    .update({
-      calculations_count: (profile?.calculations_count || 0) + 1,
-    } as any)
-    .eq('id', user.id)
+  const updateData = { calculations_count: profileData.calculations_count + 1 }
+  const { error: updateError } = await (supabase.from('user_profiles').update as any)(updateData).eq('id', user.id)
 
   if (updateError) throw updateError
 }
