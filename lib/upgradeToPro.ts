@@ -6,9 +6,7 @@ export async function upgradeToPro(userId: string) {
 
   const { error } = await supabase
     .from('user_profiles')
-    .update({
-      is_pro: true,
-    })
+    .update({ is_pro: true })
     .eq('id', userId)
 
   if (error) {
