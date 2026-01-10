@@ -1,17 +1,10 @@
-import { createClient } from '@/lib/supabase/client'
-import type { Database } from '@/lib/supabase/types'
-
-export async function upgradeToPro(userId: string) {
-  const supabase = createClient<Database>()
+export async function upgradeToPro(user: { id: string }) {
+  const supabase = createClient()
 
   const { error } = await supabase
     .from('user_profiles')
     .update({ is_pro: true })
-    .eq('id', userId)
+    .eq('id', user.id)
 
-  if (error) {
-    throw error
-  }
-
-  return true
+  if (error) throw error
 }

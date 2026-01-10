@@ -12,23 +12,22 @@ export interface Database {
       user_profiles: {
         Row: {
           id: string
-          email: string | null
           is_pro: boolean
           calculations_count: number
+          email: string | null
           created_at: string
         }
         Insert: {
           id: string
-          email?: string | null
           is_pro?: boolean
           calculations_count?: number
+          email?: string | null
           created_at?: string
         }
         Update: {
-          id?: string
-          email?: string | null
           is_pro?: boolean
           calculations_count?: number
+          email?: string | null
           created_at?: string
         }
       }
