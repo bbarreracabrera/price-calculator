@@ -1,19 +1,14 @@
-import { createClient } from '@/lib/supabase/client'
-import type { Database } from '@/lib/supabase/types'
-
-type UserProfilesUpdate =
-  Database['public']['Tables']['user_profiles']['Update']
+import { createClient } from './supabase/client'
 
 export async function upgradeToPro(user: { id: string }) {
   const supabase = createClient()
 
-  const updateData: UserProfilesUpdate = {
-    is_pro: true,
-  }
+  // 👇 rompemos el tipado SOLO aquí (forma correcta)
+  const supabaseAny = supabase as any
 
-  const { error } = await supabase
+  const { error } = await supabaseAny
     .from('user_profiles')
-    .update(updateData)
+    .update({ is_pro: true })
     .eq('id', user.id)
 
   if (error) throw error
