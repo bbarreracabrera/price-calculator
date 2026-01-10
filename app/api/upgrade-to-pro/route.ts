@@ -7,38 +7,29 @@ export async function POST() {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: any) {
-          cookieStore.set({ name, value: '', ...options })
-        },
-      },
+      cookies: cookieStore,
     }
   )
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (authError || !user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ is_pro: true })
-    .eq('id', user.id)
+  const { error } = await supabase.rpc('upgrade_user_to_pro', {
+    user_id_input: user.id,
+  })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
   return NextResponse.json({ success: true })
 }
+
