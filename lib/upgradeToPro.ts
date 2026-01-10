@@ -1,23 +1,14 @@
-import { createClient } from './supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
-/**
- * Actualiza el usuario a plan Pro
- * @throws Error si el usuario no está autenticado o hay error en la BD
- */
-export async function upgradeToPro() {
+export async function upgradeToPro(userId: string) {
   const supabase = createClient()
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('No autenticado')
+  const updateData = { is_pro: true }
+  const { error } = await (supabase.from('user_profiles').update as any)(updateData).eq('id', userId)
 
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ is_pro: true } as any)
-    .eq('id', user.id)
+  if (error) {
+    throw error
+  }
 
-  if (error) throw error
+  return true
 }
-

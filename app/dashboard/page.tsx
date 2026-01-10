@@ -127,7 +127,9 @@ export default function DashboardPage() {
             <button
               onClick={async () => {
                 try {
-                  await upgradeToPro()
+                  const { data: { user } } = await supabase.auth.getUser()
+                  if (!user) throw new Error('No autenticado')
+                  await upgradeToPro(user.id)
                   alert('🎉 Ya eres Pro')
                   location.reload()
                 } catch (e: any) {
