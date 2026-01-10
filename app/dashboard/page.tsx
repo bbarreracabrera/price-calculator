@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { upgradeToPro } from '@/lib/upgradeToPro'
 import Navbar from '@/components/Navbar'
 
 type Profile = {
@@ -15,6 +14,7 @@ type Profile = {
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
+
   const [profile, setProfile] = useState<Profile | null>(null)
   const [calculations, setCalculations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,9 +24,7 @@ export default function DashboardPage() {
   }, [])
 
   async function loadData() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       router.push('/login')
@@ -39,7 +37,7 @@ export default function DashboardPage() {
       .eq('id', user.id)
       .single()
 
-    setProfile(profileData as Profile | null)
+    setProfile(profileData as Profile)
 
     if ((profileData as any)?.is_pro) {
       const { data: calculationsData } = await supabase
@@ -56,80 +54,47 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0f172a',
-        color: 'white',
-        padding: 32
-      }}>
+      <div style={{ minHeight: '100vh', background: '#0f172a', color: 'white', padding: 32 }}>
         <Navbar />
-        <div style={{
-          maxWidth: 720,
-          margin: '0 auto',
-          background: '#020617',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 10px 30px rgba(0,0,0,.4)'
-        }}>
-          <p>Cargando...</p>
-        </div>
+        <p>Cargando...</p>
       </div>
     )
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0f172a',
-      color: 'white',
-      padding: 32
-    }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: 'white', padding: 32 }}>
       <Navbar />
-      <div style={{
-        maxWidth: 720,
-        margin: '0 auto',
-        background: '#020617',
-        borderRadius: 12,
-        padding: 24,
-        boxShadow: '0 10px 30px rgba(0,0,0,.4)'
-      }}>
-        <h1 style={{ fontSize: 28, marginBottom: 16 }}>
-          Panel de Usuario
-        </h1>
 
-        <div style={{ marginBottom: 16 }}>
-          <p><strong>Email:</strong> {profile?.email}</p>
-          <p>
-            <strong>Plan:</strong>{' '}
-            <span style={{
-              color: profile?.is_pro ? '#22c55e' : '#facc15'
-            }}>
-              {profile?.is_pro ? 'PRO 🚀' : 'FREE'}
-            </span>
-          </p>
-          <p>
-            <strong>Uso:</strong>{' '}
-            {profile?.calculations_count} /{' '}
-            {profile?.is_pro ? '∞' : '3'}
-          </p>
-        </div>
+      <div
+        style={{
+          maxWidth: 720,
+          margin: '0 auto',
+          background: '#020617',
+          borderRadius: 12,
+          padding: 24,
+          boxShadow: '0 10px 30px rgba(0,0,0,.4)',
+        }}
+      >
+        <h1 style={{ fontSize: 28, marginBottom: 16 }}>Panel de Usuario</h1>
+
+        <p><strong>Email:</strong> {profile?.email}</p>
+        <p>
+          <strong>Plan:</strong>{' '}
+          <span style={{ color: profile?.is_pro ? '#22c55e' : '#facc15' }}>
+            {profile?.is_pro ? 'PRO 🚀' : 'FREE'}
+          </span>
+        </p>
+        <p>
+          <strong>Uso:</strong> {profile?.calculations_count} / {profile?.is_pro ? '∞' : '3'}
+        </p>
 
         {!profile?.is_pro && (
-          <div style={{
-            background: '#1e293b',
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 24
-          }}>
-            <p style={{ color: '#facc15' }}>
-              Estás en el plan Free. Máximo 3 cálculos.
-            </p>
+          <div style={{ marginTop: 20 }}>
             <button
               onClick={async () => {
                 try {
-                  const { data: { user } } = await supabase.auth.getUser()
-                  if (!user) throw new Error('No autenticado')
-                  await upgradeToPro({ id: user.id })
+                  const res = await fetch('/api/upgrade-to-pro', { method: 'POST' })
+                  if (!res.ok) throw new Error('Error al actualizar')
                   alert('🎉 Ya eres Pro')
                   location.reload()
                 } catch (e: any) {
@@ -137,15 +102,15 @@ export default function DashboardPage() {
                 }
               }}
               style={{
-                marginTop: 12,
                 background: '#22c55e',
                 color: 'white',
-                border: 'none',
                 padding: '10px 16px',
                 borderRadius: 8,
+                border: 'none',
                 cursor: 'pointer',
-                fontWeight: 'bold'
-              }}>
+                fontWeight: 'bold',
+              }}
+            >
               Actualizar a Pro
             </button>
           </div>
@@ -153,24 +118,15 @@ export default function DashboardPage() {
 
         {profile?.is_pro && (
           <>
-            <h2 style={{ fontSize: 20, marginBottom: 12 }}>
-              Historial
-            </h2>
+            <h2 style={{ marginTop: 24 }}>Historial</h2>
+
             {calculations.length === 0 ? (
-              <p style={{ color: '#94a3b8' }}>No hay cálculos aún</p>
+              <p>No hay cálculos aún</p>
             ) : (
-              <ul style={{ listStyle: 'none', padding: 0 }}>
+              <ul>
                 {calculations.map(c => (
-                  <li key={c.id} style={{
-                    padding: 12,
-                    background: '#1e293b',
-                    borderRadius: 8,
-                    marginBottom: 8
-                  }}>
-                    <strong>${c.precio_final}</strong>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                      {new Date(c.created_at).toLocaleDateString()}
-                    </div>
+                  <li key={c.id}>
+                    ${c.precio_final} — {new Date(c.created_at).toLocaleDateString()}
                   </li>
                 ))}
               </ul>
@@ -181,4 +137,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
