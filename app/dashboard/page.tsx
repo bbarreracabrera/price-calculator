@@ -129,7 +129,7 @@ export default function DashboardPage() {
                 try {
                   const { data: { user } } = await supabase.auth.getUser()
                   if (!user) throw new Error('No autenticado')
-                  await upgradeToPro(user.id)
+                  await upgradeToPro({ id: user.id })
                   alert('🎉 Ya eres Pro')
                   location.reload()
                 } catch (e: any) {
