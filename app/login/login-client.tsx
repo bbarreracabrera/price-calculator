@@ -1,31 +1,38 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
 
 export default function LoginClient() {
-  const searchParams = useSearchParams()
-  const error = searchParams.get("error")
+  const supabase = createClient()
 
-return (
-  <div style={{ padding: 40, background: "#fff", minHeight: "100vh" }}>
-    <h1 style={{ fontSize: 32, marginBottom: 20 }}>
-      Iniciar sesión
-    </h1>
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    })
+  }
 
-    <form method="post" action="/api/auth/login">
+  return (
+    <div style={{ minHeight: "100vh", padding: 40 }}>
+      <h1 style={{ fontSize: 32, marginBottom: 20 }}>
+        Iniciar sesión
+      </h1>
+
       <button
-        type="submit"
+        onClick={handleLogin}
         style={{
           padding: "12px 20px",
           background: "black",
           color: "white",
+          borderRadius: 6,
           fontSize: 16,
-          borderRadius: 6
         }}
       >
-        Iniciar sesión
+        Iniciar sesión con Google
       </button>
-    </form>
-  </div>
-)
+    </div>
+  )
 }
+
