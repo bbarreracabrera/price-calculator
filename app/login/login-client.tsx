@@ -7,18 +7,20 @@ export default function LoginClient() {
   const error = searchParams.get("error")
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-bold">Iniciar sesión</h1>
+    <div style={{ padding: 24 }}>
+      <h1>Iniciar sesión</h1>
 
-        {error && (
-          <p className="text-sm text-red-500">
-            Error: {error}
-          </p>
-        )}
+      {error && (
+        <p style={{ color: "red" }}>
+          Error al iniciar sesión: {error}
+        </p>
+      )}
 
-        {/* Aquí va tu formulario de login */}
-      </div>
+      <form method="post" action="/api/auth/login">
+        <button type="submit">
+          Iniciar sesión
+        </button>
+      </form>
     </div>
   )
 }
