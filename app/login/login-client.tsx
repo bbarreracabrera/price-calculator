@@ -8,8 +8,13 @@ export default function LoginClient() {
 
   return (
     <div>
-      <h1>Login</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && (
+        <p className="text-red-500 text-sm mb-4">
+          Error: {error}
+        </p>
+      )}
+
+      {/* formulario de login */}
     </div>
   )
 }
