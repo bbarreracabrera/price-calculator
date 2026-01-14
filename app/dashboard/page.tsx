@@ -25,7 +25,8 @@ export default function Dashboard() {
       }
     }
 
-    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Supabase v2+ devuelve { data: { subscription } }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         router.replace('/')
       } else {

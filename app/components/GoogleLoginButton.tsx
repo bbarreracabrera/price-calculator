@@ -28,7 +28,8 @@ export default function GoogleLoginButton() {
       setLoading(false)
     }
 
-    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Supabase v2+ devuelve { data: { subscription } }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email! })
         router.replace('/dashboard')
