@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { upgradeToPro } from '@/lib/upgradeToPro'
 import Navbar from '@/components/Navbar'
 
 type Profile = {
@@ -21,33 +20,20 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      const user = data.session?.user
-      if (!user) {
-        router.replace('/login')
-        return
-      }
-      loadData(user.id)
-    }
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        router.replace('/login')
-      } else {
-        loadData(session.user.id)
-      }
-    })
-
-    checkSession()
-    return () => subscription.unsubscribe()
+    loadData()
   }, [])
 
-  async function loadData(userId: string) {
+  async function loadData() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
     const { data: profileData } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single()
 
     setProfile(profileData as Profile | null)
@@ -56,7 +42,7 @@ export default function DashboardPage() {
       const { data: calculationsData } = await supabase
         .from('calculations')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       setCalculations(calculationsData || [])
@@ -65,16 +51,7 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#0f172a', color: 'white', padding: 32 }}>
-        <Navbar />
-        <div style={{ maxWidth: 720, margin: '0 auto', background: '#020617', borderRadius: 12, padding: 24 }}>
-          <p>Cargando...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <div style={{ minHeight: '100vh', padding: 32 }}>Cargando...</div>
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: 'white', padding: 32 }}>
@@ -84,15 +61,8 @@ export default function DashboardPage() {
 
         <div style={{ marginBottom: 16 }}>
           <p><strong>Email:</strong> {profile?.email}</p>
-          <p>
-            <strong>Plan:</strong>{' '}
-            <span style={{ color: profile?.is_pro ? '#22c55e' : '#facc15' }}>
-              {profile?.is_pro ? 'PRO 🚀' : 'FREE'}
-            </span>
-          </p>
-          <p>
-            <strong>Uso:</strong> {profile?.calculations_count} / {profile?.is_pro ? '∞' : '3'}
-          </p>
+          <p><strong>Plan:</strong> <span style={{ color: profile?.is_pro ? '#22c55e' : '#facc15' }}>{profile?.is_pro ? 'PRO 🚀' : 'FREE'}</span></p>
+          <p><strong>Uso:</strong> {profile?.calculations_count} / {profile?.is_pro ? '∞' : '3'}</p>
         </div>
 
         {!profile?.is_pro && (
@@ -102,11 +72,18 @@ export default function DashboardPage() {
               onClick={async () => {
                 if (!profile) return
                 try {
-                  await upgradeToPro(profile.id)
-                  alert('🎉 Ya eres Pro')
-                  location.reload()
+                  const res = await fetch('/api/mercadopago/create_preference', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      plan: 'PRO',
+                      price: 10000, // precio en CLP
+                      userId: profile.id
+                    })
+                  })
+                  const data = await res.json()
+                  window.location.href = data.init_point
                 } catch (e: any) {
-                  alert(e.message)
+                  alert('Error iniciando pago: ' + e.message)
                 }
               }}
               style={{
@@ -118,8 +95,7 @@ export default function DashboardPage() {
                 borderRadius: 8,
                 cursor: 'pointer',
                 fontWeight: 'bold'
-              }}
-            >
+              }}>
               Actualizar a Pro
             </button>
           </div>
@@ -148,3 +124,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
