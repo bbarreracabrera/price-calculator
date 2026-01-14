@@ -31,7 +31,7 @@ export default function Page() {
           </div>
         </div>
         <div className="md:w-1/2 mt-12 md:mt-0 flex justify-center">
-          <img src="/mujernegocio.svg" alt="Profesional de negocios" className="w-full max-w-md" />
+          <img src="/manos.svg" alt="Profesional de negocios" className="w-full max-w-md" />
         </div>
       </section>
 
