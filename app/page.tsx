@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 
 export default function Page() {
   return (
@@ -13,8 +14,16 @@ export default function Page() {
           <span className="font-bold text-xl">Calculadora Inteligente de Precios</span>
         </div>
         <div className="space-x-4">
-          <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition">Iniciar Sesión</button>
-          <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Crear Cuenta</button>
+          <Link href="/login">
+            <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition">
+              Iniciar Sesión
+            </button>
+          </Link>
+          <Link href="/register">
+            <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+              Crear Cuenta
+            </button>
+          </Link>
         </div>
       </header>
 
@@ -24,14 +33,20 @@ export default function Page() {
           <h1 className="text-4xl font-bold text-blue-900">Calcula tus precios al instante</h1>
           <p className="text-lg text-gray-700">Serio, rápido y fácil: la herramienta que tu negocio necesita.</p>
           <div className="flex space-x-4 mt-6">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-              Iniciar con Google
-            </button>
-            <button className="px-6 py-3 border border-gray-400 rounded hover:bg-gray-100 transition">Comenzar Gratis</button>
+            <Link href="/login">
+              <button className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                Iniciar con Google
+              </button>
+            </Link>
+            <Link href="/register">
+              <button className="px-6 py-3 border border-gray-400 rounded hover:bg-gray-100 transition">
+                Comenzar Gratis
+              </button>
+            </Link>
           </div>
         </div>
         <div className="md:w-1/2 mt-12 md:mt-0 flex justify-center">
-          <img src="/manos.svg" alt="Profesional de negocios" className="w-full max-w-md" />
+          <img src="/mujernegocio.svg" alt="Profesional de negocios" className="w-full max-w-md" />
         </div>
       </section>
 
@@ -45,7 +60,9 @@ export default function Page() {
             <li>Funciones básicas</li>
             <li>Soporte estándar</li>
           </ul>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Comenzar Gratis</button>
+          <Link href="/register">
+            <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Comenzar Gratis</button>
+          </Link>
         </div>
 
         <div className="border rounded-lg p-6 text-center shadow hover:shadow-lg transition">
@@ -56,7 +73,9 @@ export default function Page() {
             <li>Reportes avanzados</li>
             <li>Soporte prioritario</li>
           </ul>
-          <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Mejorar a Pro</button>
+          <Link href="/register">
+            <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Mejorar a Pro</button>
+          </Link>
         </div>
       </section>
 
