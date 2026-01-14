@@ -1,16 +1,30 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function Page() {
+  const router = useRouter()
 
+  // Detecta si el usuario ya tiene sesión al cargar la página
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard') // Redirige directamente si ya está logueado
+      }
+    }
+    checkSession()
+  }, [router])
+
+  // Función de login con Google
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard` // Cambia esta ruta si quieres otra página después del login
+        redirectTo: `${window.location.origin}/dashboard` // ruta final después del login
       }
     })
     if (error) console.error('Error iniciando sesión:', error.message)
@@ -45,12 +59,14 @@ export default function Page() {
           <h1 className="text-4xl font-bold text-blue-900">Calcula tus precios al instante</h1>
           <p className="text-lg text-gray-700">Serio, rápido y fácil: la herramienta que tu negocio necesita.</p>
           <div className="flex space-x-4 mt-6">
+            {/* Botón de Google Login */}
             <button
               onClick={handleGoogleSignIn}
               className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
             >
               Iniciar con Google
             </button>
+
             <Link href="/register">
               <button className="px-6 py-3 border border-gray-400 rounded hover:bg-gray-100 transition">
                 Comenzar Gratis
