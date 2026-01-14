@@ -19,10 +19,11 @@ export default function GoogleLoginButton() {
   }, [router])
 
   const handleSignIn = async () => {
+    // Redirige directamente a la ruta /dashboard después de login
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard` // Redirige al dashboard
+        redirectTo: `${window.location.origin}/dashboard` // URL final
       }
     })
     if (error) console.error('Error iniciando sesión:', error.message)
@@ -33,7 +34,7 @@ export default function GoogleLoginButton() {
       onClick={handleSignIn}
       className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
     >
-      Iniciar con Google
+      Iniciar sesión con Google
     </button>
   )
 }
