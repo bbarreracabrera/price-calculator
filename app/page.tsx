@@ -6,8 +6,6 @@ import GoogleLoginButton from './components/GoogleLoginButton'
 export default function Page() {
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans">
-
-      {/* Hero Section */}
       <section className="flex flex-col md:flex-row items-center justify-between p-12 md:p-24 bg-blue-50">
         <div className="md:w-1/2 space-y-4">
           <h1 className="text-4xl font-bold text-blue-900">Calcula tus precios al instante</h1>
@@ -26,7 +24,6 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Benefits Section */}
       <section className="p-12 md:p-24 bg-gray-50 grid md:grid-cols-3 gap-8 text-center">
         <div>
           <img src="/finance.svg" alt="Seriedad" className="mx-auto w-32 h-32" />
@@ -47,4 +44,3 @@ export default function Page() {
     </div>
   )
 }
-
