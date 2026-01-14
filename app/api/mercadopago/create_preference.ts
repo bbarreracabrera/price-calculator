@@ -1,45 +1,66 @@
 // app/api/mercadopago/create_preference.ts
-import type { NextRequest } from 'next/server'
-import mercadopago from 'mercadopago'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/client'
-
-// Inicializar MercadoPago correctamente
-mercadopago.configure({
-  access_token: process.env.MP_ACCESS_TOKEN!
-})
+import { v4 as uuidv4 } from 'uuid'
+import type { Database } from '@/types'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = createClient()
-    const { plan, price, userId } = await req.json()
+    const { description, price } = await req.json()
 
-    if (!plan || !price || !userId) {
-      return new Response(JSON.stringify({ error: 'Faltan parámetros' }), { status: 400 })
+    // Validar usuario
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || !user.email) {
+      return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
     }
 
-    // Crear preferencia de pago
-    const preference = {
-      items: [
-        {
-          title: plan,
-          quantity: 1,
-          currency_id: 'CLP',
-          unit_price: price
-        }
-      ],
-      back_urls: {
-        success: `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/success?userId=${userId}`,
-        failure: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-        pending: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
+    const preferenceId = uuidv4()
+
+    // Crear preferencia en MercadoPago
+    const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      auto_return: 'approved'
+      body: JSON.stringify({
+        items: [{ title: description || 'Pro Plan', quantity: 1, unit_price: Number(price) || 10000, currency_id: 'CLP' }],
+        payer: { email: user.email },
+        back_urls: {
+          success: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
+          failure: `${process.env.NEXT_PUBLIC_BASE_URL}/failure`,
+          pending: `${process.env.NEXT_PUBLIC_BASE_URL}/pending`,
+        },
+        auto_return: 'approved',
+        external_reference: preferenceId,
+      }),
+    })
+
+    if (!mpResponse.ok) {
+      const errorData = await mpResponse.json()
+      return NextResponse.json({ error: 'Error creando preferencia', details: errorData }, { status: mpResponse.status })
     }
 
-    const response = await mercadopago.preferences.create(preference)
+    const preferenceData = await mpResponse.json()
 
-    return new Response(JSON.stringify({ init_point: response.body.init_point }), { status: 200 })
-  } catch (error: any) {
-    console.error('Error creando preferencia:', error)
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    // Guardar la preferencia en Supabase
+    const { error: dbError } = await supabase
+      .from<Database['public']['Tables']['mp_preferences']['Insert']>('mp_preferences')
+      .insert([{
+        id: preferenceId,
+        user_id: user.id,
+        mp_preference_id: preferenceData.id,
+        amount: Number(price) || 10000,
+        description: description || 'Pro Plan',
+        status: 'pending',
+      }])
+
+    if (dbError) console.error('Error guardando preferencia en Supabase:', dbError)
+
+    return NextResponse.json({ checkout_url: preferenceData.init_point })
+  } catch (err: any) {
+    console.error('Error creando preferencia:', err)
+    return NextResponse.json({ error: err.message || 'Error desconocido' }, { status: 500 })
   }
 }
