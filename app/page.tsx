@@ -2,8 +2,20 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function Page() {
+
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard` // Cambia esta ruta si quieres otra página después del login
+      }
+    })
+    if (error) console.error('Error iniciando sesión:', error.message)
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans">
 
@@ -33,11 +45,12 @@ export default function Page() {
           <h1 className="text-4xl font-bold text-blue-900">Calcula tus precios al instante</h1>
           <p className="text-lg text-gray-700">Serio, rápido y fácil: la herramienta que tu negocio necesita.</p>
           <div className="flex space-x-4 mt-6">
-            <Link href="/login">
-              <button className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                Iniciar con Google
-              </button>
-            </Link>
+            <button
+              onClick={handleGoogleSignIn}
+              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              Iniciar con Google
+            </button>
             <Link href="/register">
               <button className="px-6 py-3 border border-gray-400 rounded hover:bg-gray-100 transition">
                 Comenzar Gratis
@@ -103,4 +116,3 @@ export default function Page() {
     </div>
   )
 }
-
