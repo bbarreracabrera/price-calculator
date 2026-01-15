@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
             {
               title: description || 'Plan Pro',
               quantity: 1,
-              unit_price: Number(price) || 10000,
+              unit_price: Number(price) || 9900,
               currency_id: 'CLP',
             },
           ],
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     id: preferenceId,
     user_id: user.id,
     mp_preference_id: preferenceData.id,
-    amount: Number(price) || 10000,
+    amount: Number(price) || 9990,
     description: description || 'Pro Plan',
     status: 'pending',
   })

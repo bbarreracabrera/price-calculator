@@ -69,7 +69,17 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Coincidir con todas las rutas de solicitud excepto las que comienzan con:
+     * - _next/static (archivos estáticos)
+     * - _next/image (archivos de optimización de imágenes)
+     * - favicon.ico (archivo favicon)
+     * - / (root - landing page)
+     * - /pricing (precios)
+     * - /calculator (ESTO ES LO QUE NECESITAS AGREGAR)
+     * - /api (rutas api)
+     * - /auth (rutas auth)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|calculator|pricing|$).*)',
   ],
 }
-

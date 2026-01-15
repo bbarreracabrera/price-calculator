@@ -1,48 +1,35 @@
-import { redirect } from 'next/navigation'
-import CalculatorForm from '@/components/CalculatorForm'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import Navbar from '@/components/Navbar'
+import Calculator from '@/app/components/Calculator'
 
-export default async function CalculatorPage() {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Verificar límites del usuario
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  const isPro = (profile as any)?.is_pro ?? false
-  const calculationsCount = (profile as any)?.calculations_count ?? 0
-  const maxCalculations = isPro ? Infinity : 3
-  const canCalculate = isPro || calculationsCount < maxCalculations
-
-  if (!canCalculate) {
-    redirect('/dashboard')
-  }
-
+export default function CalculatorPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Calculadora de Precios</h1>
-          <p className="mt-2 text-gray-600">
-            Ingresa los datos para calcular el precio sugerido con margen e IVA
-          </p>
-        </div>
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center px-6">
+      <div className="w-full max-w-5xl space-y-10">
 
-        <CalculatorForm userId={user.id} isPro={isPro} />
+        {/* Header */}
+        <header className="text-center space-y-4">
+          <span className="inline-block px-4 py-1 text-sm rounded-full bg-green-500/10 text-green-400 font-medium">
+            Calculadora profesional
+          </span>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white">
+            Calcula precios justos  
+            <span className="block text-green-400">sin perder dinero</span>
+          </h1>
+          <p className="text-slate-400 max-w-xl mx-auto">
+            Diseñada para freelancers y profesionales independientes en Chile.
+          </p>
+        </header>
+
+        {/* Card */}
+        <section className="bg-slate-900/80 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-10">
+          <Calculator />
+        </section>
+
+        {/* Footer */}
+        <footer className="text-center text-xs text-slate-500">
+          Price Calculator · Herramienta profesional
+        </footer>
+
       </div>
-    </div>
+    </main>
   )
 }
-
