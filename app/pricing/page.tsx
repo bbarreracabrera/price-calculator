@@ -120,12 +120,11 @@ export default async function PricingPage() {
                ) : (
                  <form action="/api/checkout_mercadopago" method="POST"> 
                    {/* 👆 Este form preparará el terreno para MercadoPago */}
-                   <button 
-                    disabled 
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-slate-950 font-bold opacity-80 cursor-not-allowed"
-                   >
-                     MercadoPago (Configurando...)
-                   </button>
+                  <Link href="/dashboard">
+  <button className="w-full bg-yellow-400 text-black font-bold py-3 px-6 rounded-lg hover:bg-yellow-500 transition-colors">
+    Obtener Plan PRO ($9.990)
+  </button>
+</Link>
                  </form>
                )
             )}
