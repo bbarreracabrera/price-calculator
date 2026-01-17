@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-// ❌ Quitamos el import de Navbar porque ya está en tu Layout global
+// 1. IMPORTAMOS TOAST
+import toast from 'react-hot-toast'
 
 export default function ClientsPage() {
   const [supabase] = useState(() => createBrowserClient(
@@ -41,7 +42,7 @@ export default function ClientsPage() {
     loadClients()
   }, [])
 
-  // 2. Guardar Cliente
+  // 2. Guardar Cliente (Con Toast)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -58,24 +59,64 @@ export default function ClientsPage() {
       setFormData({ name: '', rut: '', email: '', phone: '' })
       setShowForm(false)
       loadClients()
+      toast.success('Cliente agregado correctamente') // 🟢 ÉXITO
     } else {
-      alert('Error al guardar cliente')
+      toast.error('Error al guardar cliente') // 🔴 ERROR
     }
     setSaving(false)
   }
 
-  // 3. Borrar Cliente
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Borrar este cliente?')) return
-    await supabase.from('clients').delete().eq('id', id)
-    setClients(clients.filter(c => c.id !== id))
+  // 3. Borrar Cliente (Con Toast Interactivo "Jefe Final")
+  const handleDelete = (id: string) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-white">¿Eliminar este cliente?</span>
+        <span className="text-xs text-zinc-400">Esta acción no se puede deshacer.</span>
+        <div className="flex gap-2 mt-2">
+          
+          {/* Botón SÍ (Borrar) */}
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id) // Cerrar la pregunta
+              
+              const { error } = await supabase.from('clients').delete().eq('id', id)
+              
+              if (!error) {
+                setClients(prev => prev.filter(c => c.id !== id))
+                toast.success('Cliente eliminado')
+              } else {
+                toast.error('No se pudo eliminar')
+              }
+            }}
+            className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600 transition"
+          >
+            Sí, eliminar
+          </button>
+
+          {/* Botón NO (Cancelar) */}
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="bg-zinc-700 text-white px-3 py-1.5 rounded text-xs hover:bg-zinc-600 transition"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: 5000, // Tiempo para decidir
+      style: {
+        background: '#18181b', // Fondo oscuro
+        color: '#fff',
+        border: '1px solid #27272a',
+        minWidth: '280px'
+      }
+    })
   }
 
   return (
-    // ✅ Agregamos 'pt-32' (padding-top extra) para que el Navbar no tape el título
     <div className="min-h-screen bg-black text-white px-6 py-12 pt-32 relative overflow-hidden">
       
-      {/* Luces de fondo sutiles para que no se vea tan plano */}
+      {/* Luces de fondo */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-900/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
@@ -140,12 +181,10 @@ export default function ClientsPage() {
         {/* Lista de Clientes */}
         {loading ? (
           <div className="space-y-4">
-             {/* Esqueletos de carga */}
              <div className="h-24 bg-zinc-900 rounded-xl animate-pulse"></div>
              <div className="h-24 bg-zinc-900 rounded-xl animate-pulse delay-75"></div>
           </div>
         ) : clients.length === 0 ? (
-          // Estado Vacío (Mejorado)
           <div className="text-center py-16 bg-zinc-900/30 rounded-3xl border border-zinc-800 border-dashed flex flex-col items-center justify-center gap-4">
             <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-3xl">📇</div>
             <div>
@@ -154,9 +193,10 @@ export default function ClientsPage() {
             </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-4 pb-24">
             {clients.map(client => (
               <div key={client.id} className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl hover:border-green-500/50 hover:bg-zinc-900 transition-all group relative">
+                {/* Botón Eliminar (ahora llama a handleDelete con toast) */}
                 <button 
                   onClick={() => handleDelete(client.id)}
                   className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-red-500/10 rounded-lg"

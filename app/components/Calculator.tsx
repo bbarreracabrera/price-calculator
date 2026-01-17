@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import LimitModal from './LimitModal'
+// 1. Importamos toast
+import toast from 'react-hot-toast'
 
 export default function Calculator() {
   // --- 1. ESTADOS DE DATOS ---
@@ -23,25 +25,25 @@ export default function Calculator() {
   const [saving, setSaving] = useState(false)
   const [animate, setAnimate] = useState(false)
   
-  // NUEVO: Estados para Clientes
+  // Estados para Clientes
   const [clients, setClients] = useState<any[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
 
-  // --- 3. CARGAR DATOS (Usuario y Clientes) ---
+  // --- 3. CARGAR DATOS ---
   useEffect(() => {
     const initData = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         setUserId(session.user.id)
         
-        // A) Contar proyectos (Límite Free)
+        // A) Contar proyectos
         const { count } = await supabase
           .from('projects')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', session.user.id)
         setProjectCount(count || 0)
 
-        // B) Cargar Clientes (Agenda)
+        // B) Cargar Clientes
         const { data: clientsData } = await supabase
           .from('clients')
           .select('*')
@@ -67,9 +69,8 @@ export default function Calculator() {
     return () => clearTimeout(timer)
   }, [total])
 
-  // --- 5. COPIAR PROPUESTA ---
+  // --- 5. COPIAR PROPUESTA (Con Toast) ---
   const copyToClipboard = () => {
-    // Buscamos el nombre del cliente si está seleccionado
     const clientName = clients.find(c => c.id === selectedClientId)?.name || 'Cliente'
 
     const text = `
@@ -90,13 +91,16 @@ ${iva ? `🏛 *IVA (19%):* $${Math.round(ivaValue).toLocaleString('es-CL')}` : '
 
 _Generado con PriceCalc_ 🚀
     `.trim()
+    
     navigator.clipboard.writeText(text)
-    alert('📋 Propuesta copiada al portapapeles.')
+    // 🟢 CAMBIO: Toast en lugar de Alert
+    toast.success('¡Propuesta copiada al portapapeles!', { duration: 3000 })
   }
 
-  // --- 6. GUARDAR (Ahora incluye el Cliente) ---
+  // --- 6. GUARDAR (Con Toast) ---
   const handleSave = async () => {
-    if (!userId) return alert('⚠️ Inicia sesión para guardar.')
+    if (!userId) return toast.error('Inicia sesión para guardar historial.') // 🟢 Toast
+    
     if (projectCount >= 3) {
       setShowLimitModal(true)
       return
@@ -104,8 +108,6 @@ _Generado con PriceCalc_ 🚀
 
     setSaving(true)
 
-    // Recuperamos el objeto cliente completo para guardarlo en el historial
-    // (Así, si borras el cliente de la agenda, el presupuesto histórico no pierde los datos)
     const clientSnapshot = clients.find(c => c.id === selectedClientId) || null
     const projectName = clientSnapshot ? `Proyecto para ${clientSnapshot.name}` : `Proyecto ${new Date().toLocaleDateString('es-CL')}`
 
@@ -121,14 +123,18 @@ _Generado con PriceCalc_ 🚀
         margin, 
         include_iva: iva, 
         iva_amount: ivaValue,
-        client: clientSnapshot // <--- AQUÍ GUARDAMOS AL CLIENTE
+        client: clientSnapshot
       }
     })
 
     if (!error) {
-      window.location.href = '/dashboard'
+      toast.success('¡Proyecto guardado con éxito!') // 🟢 Toast
+      // Pequeño delay para que se vea el toast antes de irse
+      setTimeout(() => {
+         window.location.href = '/dashboard'
+      }, 1000)
     } else {
-      alert('Error al guardar: ' + error.message)
+      toast.error('Error al guardar: ' + error.message) // 🟢 Toast
     }
     setSaving(false)
   }
@@ -137,12 +143,13 @@ _Generado con PriceCalc_ 🚀
     <>
       <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
-      <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
+      <div className="grid lg:grid-cols-2 gap-8 md:gap-12 pb-24"> 
+        {/* Agregué pb-24 por si acaso usas el menú móvil */}
         
         {/* === IZQUIERDA: CONFIGURACIÓN === */}
         <div className="space-y-8">
           
-          {/* SELECCIÓN DE CLIENTE (NUEVO BLOQUE) */}
+          {/* SELECCIÓN DE CLIENTE */}
           <div className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800">
             <div className="flex justify-between items-center mb-3">
               <label className="text-sm font-bold text-white flex items-center gap-2">
