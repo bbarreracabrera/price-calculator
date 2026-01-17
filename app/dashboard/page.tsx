@@ -51,20 +51,20 @@ export default function Dashboard() {
     await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
   }
 
+  // 🟢 CORRECCIÓN AQUÍ: Quitamos el "confirm()" nativo
   const handleDelete = async (projectId: string) => {
-    if (!confirm('¿Seguro que quieres borrar este presupuesto?')) return
+    // Ya no preguntamos aquí, porque el ProjectList ya preguntó con el Toast elegante.
+    // Procedemos a borrar directamente:
     setProjects(projects.filter(p => p.id !== projectId))
     await supabase.from('projects').delete().eq('id', projectId)
   }
 
   return (
-    // ✅ CAMBIO 1: Agregamos 'pb-20' al final para que el scroll no corte el ultimo elemento
     <div className="min-h-screen bg-black text-white p-6 md:p-12 relative overflow-hidden pt-28 pb-20">
       
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
-      {/* ✅ CAMBIO 2: Aumentamos space-y-8 a space-y-12 */}
       <div className="max-w-6xl mx-auto space-y-12">
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -85,7 +85,7 @@ export default function Dashboard() {
            <IncomeChart projects={projects} />
         )}
 
-        {/* Banner PRO (Más espacioso) */}
+        {/* Banner PRO */}
         <div className="relative group overflow-hidden rounded-[2rem] border border-zinc-800/50">
             <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 to-orange-600/10 blur-xl group-hover:opacity-100 transition duration-1000"></div>
             <div className="relative bg-zinc-900/50 p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">

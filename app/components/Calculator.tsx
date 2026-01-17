@@ -3,10 +3,16 @@ import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import LimitModal from './LimitModal'
-// 1. Importamos toast
 import toast from 'react-hot-toast'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 export default function Calculator() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  
+  // Detectar si estamos editando
+  const editId = searchParams.get('edit')
+
   // --- 1. ESTADOS DE DATOS ---
   const [hours, setHours] = useState(10)
   const [hourRate, setHourRate] = useState(25000)
@@ -23,6 +29,7 @@ export default function Calculator() {
   const [projectCount, setProjectCount] = useState(0)
   const [showLimitModal, setShowLimitModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loadingEdit, setLoadingEdit] = useState(false)
   const [animate, setAnimate] = useState(false)
   
   // Estados para Clientes
@@ -51,10 +58,33 @@ export default function Calculator() {
           .order('name', { ascending: true })
         
         if (clientsData) setClients(clientsData)
+
+        // C) SI ESTAMOS EDITANDO: CARGAR PROYECTO
+        if (editId) {
+          setLoadingEdit(true)
+          const { data: project } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', editId)
+            .single()
+          
+          if (project && project.details) {
+            setHours(project.details.hours || 0)
+            setHourRate(project.details.rate || 0)
+            setExpenses(project.details.expenses || 0)
+            setMargin(project.details.margin || 30)
+            setIva(project.details.include_iva ?? true)
+            if (project.details.client) {
+              setSelectedClientId(project.details.client.id)
+            }
+            toast.success('Datos cargados para editar')
+          }
+          setLoadingEdit(false)
+        }
       }
     }
     initData()
-  }, [supabase])
+  }, [supabase, editId])
 
   // --- 4. CÁLCULOS ---
   const basePrice = hours * hourRate + expenses
@@ -69,7 +99,7 @@ export default function Calculator() {
     return () => clearTimeout(timer)
   }, [total])
 
-  // --- 5. COPIAR PROPUESTA (Con Toast) ---
+  // --- 5. COPIAR PROPUESTA ---
   const copyToClipboard = () => {
     const clientName = clients.find(c => c.id === selectedClientId)?.name || 'Cliente'
 
@@ -93,15 +123,15 @@ _Generado con PriceCalc_ 🚀
     `.trim()
     
     navigator.clipboard.writeText(text)
-    // 🟢 CAMBIO: Toast en lugar de Alert
     toast.success('¡Propuesta copiada al portapapeles!', { duration: 3000 })
   }
 
-  // --- 6. GUARDAR (Con Toast) ---
+  // --- 6. GUARDAR O ACTUALIZAR ---
   const handleSave = async () => {
-    if (!userId) return toast.error('Inicia sesión para guardar historial.') // 🟢 Toast
+    if (!userId) return toast.error('Inicia sesión para guardar historial.')
     
-    if (projectCount >= 3) {
+    // Si es NUEVO proyecto, revisamos el límite. Si es EDICIÓN, no importa el límite.
+    if (!editId && projectCount >= 3) {
       setShowLimitModal(true)
       return
     }
@@ -111,7 +141,7 @@ _Generado con PriceCalc_ 🚀
     const clientSnapshot = clients.find(c => c.id === selectedClientId) || null
     const projectName = clientSnapshot ? `Proyecto para ${clientSnapshot.name}` : `Proyecto ${new Date().toLocaleDateString('es-CL')}`
 
-    const { error } = await supabase.from('projects').insert({
+    const projectData = {
       user_id: userId,
       name: projectName,
       pocket_money: subtotal,
@@ -125,18 +155,38 @@ _Generado con PriceCalc_ 🚀
         iva_amount: ivaValue,
         client: clientSnapshot
       }
-    })
+    }
+
+    let error;
+
+    if (editId) {
+      // MODO ACTUALIZAR
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update(projectData)
+        .eq('id', editId)
+      error = updateError
+    } else {
+      // MODO CREAR
+      const { error: insertError } = await supabase
+        .from('projects')
+        .insert(projectData)
+      error = insertError
+    }
 
     if (!error) {
-      toast.success('¡Proyecto guardado con éxito!') // 🟢 Toast
-      // Pequeño delay para que se vea el toast antes de irse
+      toast.success(editId ? '¡Presupuesto actualizado!' : '¡Proyecto guardado con éxito!')
       setTimeout(() => {
-         window.location.href = '/dashboard'
+         router.push('/dashboard')
       }, 1000)
     } else {
-      toast.error('Error al guardar: ' + error.message) // 🟢 Toast
+      toast.error('Error al guardar: ' + error.message)
     }
     setSaving(false)
+  }
+
+  if (loadingEdit) {
+    return <div className="text-center py-20 animate-pulse text-zinc-500">Cargando datos del presupuesto...</div>
   }
 
   return (
@@ -144,10 +194,21 @@ _Generado con PriceCalc_ 🚀
       <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
       <div className="grid lg:grid-cols-2 gap-8 md:gap-12 pb-24"> 
-        {/* Agregué pb-24 por si acaso usas el menú móvil */}
         
         {/* === IZQUIERDA: CONFIGURACIÓN === */}
         <div className="space-y-8">
+          
+          {/* Aviso de Edición */}
+          {editId && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl flex items-center justify-between">
+              <span className="text-yellow-500 font-bold flex items-center gap-2">
+                ✏️ Editando Presupuesto
+              </span>
+              <Link href="/dashboard" className="text-xs text-zinc-400 underline hover:text-white">
+                Cancelar
+              </Link>
+            </div>
+          )}
           
           {/* SELECCIÓN DE CLIENTE */}
           <div className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800">
@@ -260,14 +321,14 @@ _Generado con PriceCalc_ 🚀
                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                </button>
 
-               {/* Botón Guardar */}
+               {/* Botón Guardar / Actualizar */}
                <button 
                  onClick={handleSave}
                  disabled={saving}
-                 className="col-span-4 group relative overflow-hidden bg-gradient-to-r from-green-500 to-emerald-600 text-slate-950 font-bold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:scale-[1.02] disabled:opacity-50"
+                 className={`col-span-4 group relative overflow-hidden font-bold py-4 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 ${editId ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-black hover:shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-gradient-to-r from-green-500 to-emerald-600 text-slate-950 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)]'}`}
                >
                  <span className="relative z-10 flex items-center justify-center gap-2">
-                   {saving ? 'Guardando...' : 'Guardar Presupuesto'}
+                   {saving ? 'Guardando...' : (editId ? 'Actualizar Presupuesto' : 'Guardar Nuevo Presupuesto')}
                  </span>
                  {!saving && <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />}
                </button>
@@ -309,6 +370,7 @@ function Field({ label, value, onChange, placeholder, isCurrency }: any) {
   )
 }
 
+// ✅ ESTE ES EL COMPONENTE QUE TE FALTABA
 function ResultRow({ label, value, isGreen }: any) {
   return (
     <div className="flex justify-between items-center text-sm">
