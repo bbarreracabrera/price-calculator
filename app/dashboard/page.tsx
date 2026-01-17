@@ -4,7 +4,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import ProjectList from '../components/ProjectList'
 import DashboardStats from '../components/DashboardStats'
-import IncomeChart from '../components/IncomeChart' // 👈 Importamos el nuevo gráfico
+import IncomeChart from '../components/IncomeChart'
 
 export default function Dashboard() {
   const [supabase] = useState(() => createBrowserClient(
@@ -17,14 +17,11 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // 1. CARGA INICIAL DE DATOS
   useEffect(() => {
     const getData = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         setUserEmail(session.user.email || '')
-        
-        // Cargar Proyectos
         const { data: projectsData } = await supabase
           .from('projects')
           .select('*')
@@ -33,7 +30,6 @@ export default function Dashboard() {
         
         if (projectsData) setProjects(projectsData)
 
-        // Cargar Perfil (para el PDF)
         const { data: profileData } = await supabase
           .from('user_profiles')
           .select('*')
@@ -47,92 +43,70 @@ export default function Dashboard() {
     getData()
   }, [supabase])
 
-  // 2. FUNCIÓN PARA ACTUALIZAR ESTADO (Centralizada)
   const handleStatusChange = async (projectId: string, newStatus: string) => {
-    // A) Actualización Optimista
     const updatedProjects = projects.map(p => 
       p.id === projectId ? { ...p, status: newStatus } : p
     )
     setProjects(updatedProjects)
-
-    // B) Actualización en Base de Datos
-    const { error } = await supabase
-      .from('projects')
-      .update({ status: newStatus })
-      .eq('id', projectId)
-
-    if (error) {
-      console.error('Error al actualizar:', error)
-      alert('No se pudo actualizar el estado.')
-      // Revertir si quisieras ser muy estricto, pero generalmente basta con el alert
-    }
+    await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
   }
 
-  // 3. FUNCIÓN PARA BORRAR (Centralizada)
   const handleDelete = async (projectId: string) => {
     if (!confirm('¿Seguro que quieres borrar este presupuesto?')) return
-
-    // A) Optimista
     setProjects(projects.filter(p => p.id !== projectId))
-
-    // B) Base de Datos
     await supabase.from('projects').delete().eq('id', projectId)
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 md:p-12 relative overflow-hidden pt-24">
+    // ✅ CAMBIO 1: Agregamos 'pb-20' al final para que el scroll no corte el ultimo elemento
+    <div className="min-h-screen bg-black text-white p-6 md:p-12 relative overflow-hidden pt-28 pb-20">
       
-      {/* Luces de fondo */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
-      <div className="max-w-6xl mx-auto space-y-8">
+      {/* ✅ CAMBIO 2: Aumentamos space-y-8 a space-y-12 */}
+      <div className="max-w-6xl mx-auto space-y-12">
         
-        {/* Encabezado */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-4xl font-black tracking-tight mb-1">Panel de Control</h1>
-            <p className="text-zinc-500 font-medium">Gestiona tu negocio, {userEmail}</p>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Panel de Control</h1>
+            <p className="text-zinc-500 font-medium">Gestiona tu negocio, {userEmail.split('@')[0]}</p>
           </div>
-          <Link href="/calculator">
-            <button className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center gap-2 transform hover:-translate-y-1 active:scale-95">
+          <Link href="/calculator" className="w-full md:w-auto">
+            <button className="w-full md:w-auto px-6 py-4 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2 active:scale-95">
               <span>＋</span> Nuevo Cálculo
             </button>
           </Link>
         </div>
 
-        {/* 📊 ESTADÍSTICAS GENERALES */}
         {!loading && <DashboardStats projects={projects} />}
 
-        {/* 📈 NUEVO: GRÁFICO DE TENDENCIAS */}
-        {/* Solo lo mostramos si ya terminó de cargar y hay al menos un proyecto */}
         {!loading && projects.length > 0 && (
            <IncomeChart projects={projects} />
         )}
 
-        {/* Banner PRO */}
-        <div className="relative group overflow-hidden rounded-[2rem]">
-            <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 blur-xl group-hover:opacity-100 transition duration-1000"></div>
-            <div className="relative bg-zinc-900 border border-zinc-800 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Banner PRO (Más espacioso) */}
+        <div className="relative group overflow-hidden rounded-[2rem] border border-zinc-800/50">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 to-orange-600/10 blur-xl group-hover:opacity-100 transition duration-1000"></div>
+            <div className="relative bg-zinc-900/50 p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
               <div>
                 <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                   <span className="text-2xl">🚀</span> Desbloquea Ilimitado
                 </h3>
                 <p className="text-zinc-400 max-w-lg text-sm leading-relaxed">
-                  Estás usando la versión gratuita. Actualiza a PRO para guardar historial ilimitado y apoyar el desarrollo.
+                  Actualiza a PRO para guardar historial ilimitado y apoyar el desarrollo.
                 </p>
               </div>
-              <Link href="/pricing">
-                <button className="px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95 whitespace-nowrap">
-                  Hacerme PRO ($9.990)
+              <Link href="/pricing" className="w-full md:w-auto">
+                <button className="w-full md:w-auto px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] active:scale-95">
+                  Hacerme PRO
                 </button>
               </Link>
             </div>
         </div>
 
-        {/* LISTA DE PROYECTOS */}
         <div className="pt-4">
-          <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-3">
+          <h2 className="text-2xl font-bold mb-8 text-white flex items-center gap-3">
             <span className="w-2 h-8 bg-green-500 rounded-full"></span>
             Historial Reciente
           </h2>
