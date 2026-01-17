@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+// CORRECCIÓN: Usamos ../ para asegurar que encuentre el componente
+import CheckoutButton from '../../components/CheckoutButton' 
 
 export default async function PricingPage() {
   const supabase = await createServerSupabaseClient()
   
-  // 1. Obtenemos usuario (pero NO redirigimos si no existe, para que todos vean precios)
+  // 1. Obtenemos usuario
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -24,141 +25,137 @@ export default async function PricingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white py-24 px-6 relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white py-24 px-6 relative overflow-hidden">
       
-      {/* Fondos decorativos (Mismo estilo que la Home) */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
+      {/* === LUCES DE FONDO === */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto space-y-12 relative z-10">
         
         {/* HEADER */}
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Planes y Precios
+        <div className="text-center space-y-4 max-w-2xl mx-auto mb-16">
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight">
+            Planes y <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">Precios</span>
           </h1>
-          <p className="text-slate-400 text-lg">
-            Invierte en tu tranquilidad. Elige el plan que se adapte a tu etapa actual.
+          <p className="text-zinc-400 text-lg leading-relaxed">
+            Invierte en tu tranquilidad. Elige el plan que se adapte a tu etapa actual sin letras chicas.
           </p>
         </div>
 
         {/* GRID DE PLANES */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
           
-          {/* PLAN FREE */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 flex flex-col hover:border-slate-700 transition-colors">
-            <div className="mb-6 text-center">
-              <h3 className="text-xl font-semibold text-slate-300">Freelancer (Free)</h3>
-              <div className="mt-4 flex justify-center items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$0</span>
-                <span className="text-slate-500">/mes</span>
-              </div>
-              <p className="mt-2 text-slate-400 text-sm">Para empezar a ordenarte.</p>
+          {/* === PLAN FREE === */}
+          <div className="bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-8 flex flex-col hover:bg-zinc-900/60 transition-all duration-300 group">
+            <div className="mb-8">
+              <span className="inline-block px-4 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold uppercase tracking-widest mb-4">
+                Inicial
+              </span>
+              <h3 className="text-3xl font-bold text-white mb-2">Freelancer</h3>
+              <p className="text-zinc-500">Para empezar a ordenarte.</p>
             </div>
 
-            <ul className="space-y-4 mb-8 flex-1 px-4">
-              <Feature text="Calculadora completa (IVA + Margen)" />
-              <Feature text="Hasta 3 cálculos guardados (Demo)" />
+            <div className="text-5xl font-black text-white mb-8 tracking-tighter">
+              $0 <span className="text-lg font-medium text-zinc-500 tracking-normal">/mes</span>
+            </div>
+
+            <ul className="space-y-4 mb-10 flex-1">
+              <Feature text="Calculadora completa" />
+              <Feature text="Hasta 3 cálculos guardados" />
               <Feature text="Exportación básica" />
             </ul>
 
-            {/* Lógica del Botón FREE */}
             {!user ? (
                <Link href="/login" className="block w-full">
-                 <button className="w-full py-3 rounded-xl bg-slate-800 text-white font-medium hover:bg-slate-700 border border-slate-700 transition-all">
+                 <button className="w-full py-4 rounded-xl bg-zinc-800 text-white font-bold hover:bg-zinc-700 border border-zinc-700 transition-all">
                    Crear cuenta gratis
                  </button>
                </Link>
             ) : !isPro ? (
-              <div className="w-full py-3 rounded-xl bg-slate-800/50 text-slate-400 font-medium text-center border border-slate-800">
+              <div className="w-full py-4 rounded-xl bg-zinc-800/50 text-zinc-400 font-medium text-center border border-zinc-800 cursor-default">
                 Tu plan actual
               </div>
             ) : (
-              <div className="w-full py-3 rounded-xl bg-slate-800/50 text-slate-500 font-medium text-center border border-slate-800">
+              <div className="w-full py-4 rounded-xl bg-zinc-800/50 text-zinc-500 font-medium text-center border border-zinc-800 cursor-default">
                 Plan Básico
               </div>
             )}
           </div>
 
-          {/* PLAN PRO (Destacado) */}
-          <div className="relative bg-slate-900 border border-green-500/50 rounded-3xl p-8 shadow-2xl shadow-green-500/10 flex flex-col transform md:-translate-y-4">
+          {/* === PLAN PRO === */}
+          <div className="relative bg-zinc-900 border border-green-500/30 rounded-[2.5rem] p-8 shadow-2xl shadow-green-900/20 flex flex-col transform md:scale-105 z-20">
             
-            <div className="absolute top-0 right-0 bg-green-500 text-slate-950 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-black px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-green-500/40">
               RECOMENDADO
             </div>
 
-            <div className="mb-6 text-center">
-              <h3 className="text-xl font-semibold text-green-400">Profesional (PRO)</h3>
-              <div className="mt-4 flex justify-center items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$9.990</span>
-                <span className="text-slate-500">/mes</span>
-              </div>
-              <p className="mt-2 text-slate-400 text-sm">Control total de tu negocio.</p>
+            <div className="mb-8 mt-2">
+              <span className="inline-block px-4 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-bold uppercase tracking-widest mb-4">
+                Profesional
+              </span>
+              <h3 className="text-3xl font-bold text-white mb-2">Plan PRO</h3>
+              <p className="text-zinc-400">Control total de tu negocio.</p>
             </div>
 
-            <ul className="space-y-4 mb-8 flex-1 px-4">
-              <Feature text="Cálculos ilimitados" checkColor="text-green-400" />
+            <div className="text-5xl font-black text-white mb-8 tracking-tighter flex items-end gap-2">
+              $9.990 <span className="text-lg font-medium text-zinc-500 tracking-normal mb-1">/único</span>
+            </div>
+
+            <ul className="space-y-4 mb-10 flex-1">
+              <Feature text="Cálculos ILIMITADOS" checkColor="text-green-400" />
               <Feature text="Historial completo en la nube" checkColor="text-green-400" />
               <Feature text="Soporte prioritario" checkColor="text-green-400" />
-              <Feature text="Próximamente: Generador de cotizaciones PDF" checkColor="text-green-400" />
+              <Feature text="PDFs sin marca de agua" checkColor="text-green-400" />
             </ul>
 
-            {/* Lógica del Botón PRO */}
+            {/* BOTÓN INTELIGENTE */}
             {isPro ? (
-               <div className="w-full py-3 rounded-xl bg-green-500/20 text-green-400 font-bold text-center border border-green-500/50">
+               <div className="w-full py-4 rounded-xl bg-green-500/20 text-green-400 font-bold text-center border border-green-500/50">
                  ✅ Tienes el Plan PRO activo
                </div>
             ) : (
-               // Aquí es donde irá el botón real de MercadoPago
-               // Por ahora lleva al login si no hay usuario, o muestra "Proximamente"
                !user ? (
                  <Link href="/login" className="block w-full">
-                   <button className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-slate-950 font-bold hover:shadow-lg hover:shadow-green-500/25 transition-all">
+                   <button className="w-full py-4 rounded-xl bg-green-500 hover:bg-green-400 text-black font-black transition-all shadow-lg shadow-green-500/20 active:scale-95">
                      Suscribirse Ahora
                    </button>
                  </Link>
                ) : (
-                 <form action="/api/checkout_mercadopago" method="POST"> 
-                   {/* 👆 Este form preparará el terreno para MercadoPago */}
-                  <Link href="/dashboard">
-  <button className="w-full bg-yellow-400 text-black font-bold py-3 px-6 rounded-lg hover:bg-yellow-500 transition-colors">
-    Obtener Plan PRO ($9.990)
-  </button>
-</Link>
-                 </form>
+                 <CheckoutButton />
                )
             )}
             
             {!isPro && (
-                <p className="text-center text-xs text-slate-500 mt-3">
-                  Pago seguro vía MercadoPago
+                <p className="text-center text-xs text-zinc-500 mt-4 font-medium">
+                  Pago seguro vía MercadoPago. Sin suscripciones.
                 </p>
             )}
           </div>
 
         </div>
 
-        {/* Link volver */}
         <div className="text-center pt-8">
            {user && (
-             <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">
+             <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors text-sm font-medium">
                ← Volver a mi Dashboard
              </Link>
            )}
         </div>
 
       </div>
-    </main>
+    </div>
   )
 }
 
-/* --- Componente Auxiliar --- */
-function Feature({ text, checkColor = "text-slate-500" }: { text: string, checkColor?: string }) {
+function Feature({ text, checkColor = "text-zinc-600" }: { text: string, checkColor?: string }) {
   return (
-    <li className="flex items-start gap-3 text-slate-300 text-sm">
-      <svg className={`w-5 h-5 flex-shrink-0 ${checkColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
+    <li className="flex items-center gap-3 text-zinc-300 text-sm font-medium">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center bg-zinc-800 ${checkColor === "text-zinc-600" ? "text-zinc-400" : "bg-green-500 text-black"}`}>
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
       <span>{text}</span>
     </li>
   )

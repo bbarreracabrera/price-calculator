@@ -1,150 +1,192 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
+import LimitModal from './LimitModal' // Importamos el modal
 
 export default function Calculator() {
-  const supabase = createClient()
-  const router = useRouter()
-  
-  // Estados
+  const [name, setName] = useState('')
   const [hours, setHours] = useState(10)
-  const [hourRate, setHourRate] = useState(25000)
+  const [rate, setRate] = useState(25000)
   const [expenses, setExpenses] = useState(5000)
   const [margin, setMargin] = useState(30)
-  const [includeIva, setIncludeIva] = useState(true)
+  const [includeIVA, setIncludeIVA] = useState(true)
   
-  const [user, setUser] = useState<any>(null)
-  const [saving, setSaving] = useState(false) // Estado de carga
+  // Estados para el límite
+  const [projectCount, setProjectCount] = useState(0)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  
+  const [supabase] = useState(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ))
 
-  // Verificar usuario
+  // 1. Al cargar, verificamos cuántos proyectos tiene el usuario
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user)
-    })
-  }, [])
+    const checkUserLimits = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setUserId(session.user.id)
+        const { count } = await supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', session.user.id)
+        
+        setProjectCount(count || 0)
+      }
+    }
+    checkUserLimits()
+  }, [supabase])
 
-  // Lógica matemática
-  const netCost = (hours * hourRate) + expenses
-  const marginValue = netCost * (margin / 100)
-  const subtotal = netCost + marginValue
-  const ivaValue = includeIva ? subtotal * 0.19 : 0
-  const total = subtotal + ivaValue
+  // Lógica Matemática
+  const laborCost = hours * rate
+  const baseCost = laborCost + expenses
+  const marginAmount = baseCost * (margin / 100)
+  const subtotalNeto = baseCost + marginAmount
+  const ivaAmount = includeIVA ? subtotalNeto * 0.19 : 0
+  const total = subtotalNeto + ivaAmount
 
-  // 💾 FUNCIÓN DE GUARDADO REAL
   const handleSave = async () => {
-    // 1. Si no hay usuario, mandar al login
-    if (!user) {
-      router.push('/login')
+    if (!userId) return alert('⚠️ Debes iniciar sesión para guardar.')
+    if (!name) return alert('⚠️ Por favor, ponle un nombre al proyecto.')
+
+    // 2. EL CANDADO: Si tiene 3 o más proyectos, mostramos el modal y NO guardamos
+    // (Aquí podrías agregar "&& !isPro" si tuvieras el campo en la BD)
+    if (projectCount >= 3) {
+      setShowLimitModal(true)
       return
     }
 
-    setSaving(true)
+    const { error } = await supabase.from('projects').insert({
+      user_id: userId,
+      name,
+      pocket_money: subtotalNeto,
+      total_price: total,
+      details: { hours, rate, expenses, margin, include_iva: includeIVA, iva_amount: ivaAmount }
+    })
 
-    // 2. Insertar en Supabase (Tabla 'calculations')
-    const { error } = await supabase
-      .from('calculations')
-      .insert({
-        user_id: user.id,
-        hours: hours,
-        hour_value: hourRate,
-        expenses: expenses,
-        margin: margin,
-        precio_final: total // Dato clave para el dashboard
-      })
-
-    setSaving(false)
-
-    if (error) {
-      alert('Error al guardar: ' + error.message)
+    if (!error) {
+      window.location.href = '/dashboard'
     } else {
-      // 3. Éxito: Ir al Dashboard
-      router.push('/dashboard')
+      alert('Error al guardar')
     }
   }
 
+  // Estilos
+  const inputContainerStyle = "relative group"
+  const iconStyle = "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold group-focus-within:text-green-500 transition-colors"
+  const inputStyle = "w-full bg-zinc-900 border border-zinc-800 p-4 pl-10 rounded-xl text-white outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all font-medium"
+  const labelStyle = "text-zinc-500 text-xs font-bold uppercase mb-2 block tracking-wider"
+
   return (
-    <div className="grid lg:grid-cols-12 gap-8">
-      
-      {/* Inputs */}
-      <div className="lg:col-span-7 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputGroup label="Horas estimadas" symbol="H" value={hours} onChange={setHours} />
-          <InputGroup label="Valor Hora" symbol="$" value={hourRate} onChange={setHourRate} />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputGroup label="Gastos / Software" symbol="$" value={expenses} onChange={setExpenses} />
-          <InputGroup label="Margen deseado" symbol="%" value={margin} onChange={setMargin} />
-        </div>
-        <div 
-          onClick={() => setIncludeIva(!includeIva)}
-          className="flex items-center justify-between p-4 bg-slate-800/50 border border-slate-700 rounded-xl cursor-pointer hover:bg-slate-800 transition-colors"
-        >
-          <span className="text-slate-300 font-medium">¿Incluir IVA (19%)?</span>
-          <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${includeIva ? 'bg-green-500' : 'bg-slate-600'}`}>
-            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${includeIva ? 'translate-x-6' : 'translate-x-0'}`} />
+    <>
+      {/* El Modal vive aquí, invisible hasta que se active */}
+      <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        
+        {/* COLUMNA IZQUIERDA */}
+        <div className="lg:col-span-7 space-y-8">
+          <div>
+            <label className={labelStyle}>Nombre del Proyecto</label>
+            <input 
+              type="text" 
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-white focus:border-green-500 outline-none transition-all font-medium placeholder:text-zinc-600"
+              placeholder="Ej: Rediseño Sitio Web Corporativo..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Horas estimadas</label>
+              <span className={iconStyle}>H</span>
+              <input type="number" value={hours} onChange={e => setHours(Number(e.target.value))} className={inputStyle} />
+            </div>
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Valor Hora</label>
+              <span className={iconStyle}>$</span>
+              <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))} className={inputStyle} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Gastos / Software</label>
+              <span className={iconStyle}>$</span>
+              <input type="number" value={expenses} onChange={e => setExpenses(Number(e.target.value))} className={inputStyle} />
+            </div>
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Margen de Ganancia</label>
+              <span className={iconStyle}>%</span>
+              <input type="number" value={margin} onChange={e => setMargin(Number(e.target.value))} className={inputStyle} />
+            </div>
+          </div>
+
+          <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition-colors" onClick={() => setIncludeIVA(!includeIVA)}>
+            <div>
+              <p className="font-bold text-white mb-1">¿Incluir IVA (19%)?</p>
+              <p className="text-xs text-zinc-500">Activa esto si emites factura.</p>
+            </div>
+            <div className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${includeIVA ? 'bg-green-500' : 'bg-zinc-700'}`}>
+              <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${includeIVA ? 'translate-x-6' : 'translate-x-0'}`} />
+            </div>
           </div>
         </div>
+
+        {/* COLUMNA DERECHA (RESUMEN) */}
+        <div className="lg:col-span-5 lg:sticky lg:top-8">
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2rem] shadow-2xl shadow-black/50">
+            <div className="flex justify-between items-start mb-6">
+              <h3 className="text-xl font-black text-white tracking-tight">Resumen</h3>
+              {/* Contador visual discreto */}
+              <div className={`px-3 py-1 rounded-full text-xs font-bold border ${projectCount >= 3 ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
+                {projectCount}/3 Usados
+              </div>
+            </div>
+            
+            <div className="space-y-5 mb-8">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-zinc-400 font-medium">Costo base</span>
+                <span className="font-bold text-zinc-200">${baseCost.toLocaleString('es-CL')}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm py-3 border-y border-zinc-800/50">
+                <span className="text-green-500 font-bold flex items-center gap-2">
+                  <span className="bg-green-500/10 p-1 rounded text-xs">+{margin}%</span>
+                  Tu Ganancia
+                </span>
+                <span className="font-bold text-green-500 text-lg">+${Math.round(marginAmount).toLocaleString('es-CL')}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm pt-2">
+                <span className="text-zinc-400 font-medium">Subtotal Neto</span>
+                <span className="font-bold text-white">${Math.round(subtotalNeto).toLocaleString('es-CL')}</span>
+              </div>
+              {includeIVA && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-400 font-medium">IVA (19%)</span>
+                  <span className="font-bold text-zinc-300">${Math.round(ivaAmount).toLocaleString('es-CL')}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-8 pt-6 border-t border-zinc-800">
+              <p className="text-xs text-zinc-500 uppercase font-bold mb-2 tracking-wider">Total final</p>
+              <p className="text-5xl font-black text-green-500 tracking-tighter leading-none">
+                ${Math.round(total).toLocaleString('es-CL')}
+              </p>
+            </div>
+
+            <button 
+              onClick={handleSave}
+              className="w-full py-5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-green-600/20 active:scale-[0.98] text-lg"
+            >
+              <span>💾</span> Guardar presupuesto
+            </button>
+          </div>
+        </div>
+
       </div>
-
-      {/* Ticket Resultados */}
-      <div className="lg:col-span-5">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-
-          <h3 className="text-lg font-semibold text-slate-400 mb-6">Resumen del cobro</h3>
-          <div className="space-y-4">
-            <Row label="Costo base" value={netCost} />
-            <Row label={`Ganancia (${margin}%)`} value={marginValue} highlight />
-            <div className="h-px bg-slate-800 my-4"></div>
-            <Row label="Subtotal Neto" value={subtotal} />
-            <Row label="IVA (19%)" value={ivaValue} hidden={!includeIva} />
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <span className="block text-sm text-slate-500 mb-1">Total a cobrar</span>
-            <span className="block text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500">
-              ${Math.round(total).toLocaleString('es-CL')}
-            </span>
-          </div>
-
-          {/* 👇 BOTÓN ACTUALIZADO 👇 */}
-          <button 
-            onClick={handleSave}
-            disabled={saving}
-            className={`w-full mt-8 py-3 px-4 font-medium rounded-lg text-sm transition-all border flex items-center justify-center gap-2 group
-              ${saving 
-                ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-wait' 
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700 hover:border-slate-600'
-              }`}
-          >
-            {!user ? (
-               <>🔒 Inicia sesión para guardar</>
-            ) : saving ? (
-               <><span className="animate-spin">⏳</span> Guardando...</>
-            ) : (
-               <>💾 Guardar presupuesto</>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+    </>
   )
-}
-
-/* Helpers */
-function InputGroup({ label, symbol, value, onChange }: any) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-slate-400">{label}</label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 font-semibold">{symbol}</div>
-        <input type="number" value={value || ''} onChange={(e) => onChange(Number(e.target.value))} className="block w-full pl-10 pr-4 py-4 bg-slate-950 border border-slate-800 rounded-xl text-white font-semibold focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all outline-none" placeholder="0"/>
-      </div>
-    </div>
-  )
-}
-function Row({ label, value, highlight, hidden }: any) {
-  if (hidden) return null
-  return <div className="flex justify-between items-center text-sm"><span className={highlight ? "text-green-400" : "text-slate-400"}>{label}</span><span className={`font-medium ${highlight ? "text-green-400" : "text-slate-200"}`}>${Math.round(value).toLocaleString('es-CL')}</span></div>
 }

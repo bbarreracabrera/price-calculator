@@ -1,35 +1,24 @@
-import Calculator from '@/app/components/Calculator'
+'use client'
+import Calculator from '../components/Calculator'
 
 export default function CalculatorPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center px-6">
-      <div className="w-full max-w-5xl space-y-10">
-
-        {/* Header */}
-        <header className="text-center space-y-4">
-          <span className="inline-block px-4 py-1 text-sm rounded-full bg-green-500/10 text-green-400 font-medium">
-            Calculadora profesional
-          </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white">
-            Calcula precios justos  
-            <span className="block text-green-400">sin perder dinero</span>
+    <div className="min-h-screen bg-black text-white p-6 md:pt-16 md:pb-24">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* TEXTO SUPERIOR CENTRADO (Como en la versión online) */}
+        <header className="mb-16 text-center max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-4 leading-tight">
+            Calculadora de <span className="text-green-500">Precios</span>
           </h1>
-          <p className="text-slate-400 max-w-xl mx-auto">
-            Diseñada para freelancers y profesionales independientes en Chile.
+          <p className="text-lg md:text-xl text-zinc-400 leading-relaxed">
+            Define tus costos, establece tu margen de ganancia deseado y obtén el precio final de venta al instante, con o sin impuestos.
           </p>
         </header>
 
-        {/* Card */}
-        <section className="bg-slate-900/80 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-10">
-          <Calculator />
-        </section>
-
-        {/* Footer */}
-        <footer className="text-center text-xs text-slate-500">
-          Price Calculator · Herramienta profesional
-        </footer>
-
+        {/* La calculadora */}
+        <Calculator />
       </div>
-    </main>
+    </div>
   )
 }

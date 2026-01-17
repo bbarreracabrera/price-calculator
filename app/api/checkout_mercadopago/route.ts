@@ -4,18 +4,13 @@ import { createServerClient } from '@supabase/ssr'
 import { v4 as uuidv4 } from 'uuid'
 import MercadoPagoConfig, { Preference } from 'mercadopago'
 
-// Configuración de MercadoPago
 const client = new MercadoPagoConfig({ 
   accessToken: process.env.MP_ACCESS_TOKEN! 
 });
 
 export async function POST(req: NextRequest) {
-  console.log("🔥 --- INICIANDO PROCESO DE PAGO (SERVIDOR) ---")
-
   try {
-    // 1. Crear el cliente de Supabase
     const cookieStore = cookies()
-    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,25 +23,24 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // Leer el body (JSON)
     const body = await req.json().catch(() => ({}))
     const { description, price } = body
 
-    // 2. Obtener usuario
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user || !user.email) {
-      console.error("❌ ERROR: Usuario no autenticado")
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const preferenceId = uuidv4()
     const preference = new Preference(client);
     
-    // URL Base (Asegúrate de definir esto en .env.local, ej: http://localhost:3000)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    // === CAMBIO FINAL PARA PRODUCCIÓN ===
+    // En Vercel configuraremos esta variable. Si no existe, usa localhost.
+    const URL_FINAL = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000'
 
-    // 3. Crear preferencia en MercadoPago
+    console.log("🌐 Generando pago para:", URL_FINAL)
+
     const result = await preference.create({
       body: {
         items: [
@@ -62,20 +56,18 @@ export async function POST(req: NextRequest) {
           email: user.email,
         },
         back_urls: {
-          success: `${baseUrl}/dashboard?payment=success`,
-          failure: `${baseUrl}/pricing?payment=failure`,
-          pending: `${baseUrl}/pricing?payment=pending`,
+          success: `${URL_FINAL}/dashboard?payment=success`,
+          failure: `${URL_FINAL}/pricing?payment=failure`,
+          pending: `${URL_FINAL}/pricing?payment=pending`,
         },
-        auto_return: 'approved',
+        auto_return: 'approved', // ¡En producción (HTTPS) esto SÍ funciona!
         external_reference: preferenceId,
       }
     })
 
-    // 4. Guardar en Supabase (Opcional: Si falla la tabla, el pago sigue funcionando)
+    // Guardar en Supabase (Silencioso si falla)
     try {
-        await supabase
-        .from('mp_preferences')
-        .insert({
+        await supabase.from('mp_preferences').insert({
             id: preferenceId,
             user_id: user.id,
             mp_preference_id: result.id,
@@ -83,16 +75,14 @@ export async function POST(req: NextRequest) {
             description: description || 'Plan PRO',
             status: 'pending',
         })
-    } catch (dbError) {
-        console.warn("⚠️ No se pudo guardar en DB, pero seguimos con el pago:", dbError)
+    } catch (e) {
+        console.log("Log de pago no guardado en DB")
     }
 
-    return NextResponse.json({
-      init_point: result.init_point,
-    })
+    return NextResponse.json({ init_point: result.init_point })
 
   } catch (error: any) {
-    console.error('❌ ERROR FATAL:', error)
+    console.error('❌ ERROR MP:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

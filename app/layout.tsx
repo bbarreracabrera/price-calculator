@@ -1,27 +1,18 @@
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import Navbar from '@/app/components/Navbar'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google' // Importamos la fuente
+import Navbar from './components/Navbar'
 
-const inter = Inter({ subsets: ['latin'] })
+// Configuramos la fuente Inter
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
-  title: 'Calculadora Inteligente de Precios',
-  description: 'Calcula precios de manera inteligente con margen e IVA',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Calc Precios',
-  },
-}
-
-/* 👇 ESTO ES NUEVO EN NEXT 14 */
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  themeColor: '#0ea5e9',
+  title: 'PriceCalc - Calculadora para Freelancers',
+  description: 'Calcula tus presupuestos de forma profesional.',
 }
 
 export default function RootLayout({
@@ -30,10 +21,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
-      <body className={`${inter.className} bg-slate-950 text-white`}>
+    <html lang="es" className={inter.variable}>
+      {/* Aplicamos el fondo negro puro y la fuente a todo el body */}
+      <body className={`${inter.className} bg-black min-h-screen text-slate-200 antialiased selection:bg-green-500/30`}>
         <Navbar />
-        {children}
+        <main className="flex-1">
+          {children}
+        </main>
       </body>
     </html>
   )
