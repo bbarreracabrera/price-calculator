@@ -4,6 +4,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import ProjectList from '../components/ProjectList'
 import DashboardStats from '../components/DashboardStats'
+import IncomeChart from '../components/IncomeChart' // 👈 Importamos el nuevo gráfico
 
 export default function Dashboard() {
   const [supabase] = useState(() => createBrowserClient(
@@ -48,7 +49,7 @@ export default function Dashboard() {
 
   // 2. FUNCIÓN PARA ACTUALIZAR ESTADO (Centralizada)
   const handleStatusChange = async (projectId: string, newStatus: string) => {
-    // A) Actualización Optimista (Visualmente instantáneo)
+    // A) Actualización Optimista
     const updatedProjects = projects.map(p => 
       p.id === projectId ? { ...p, status: newStatus } : p
     )
@@ -62,8 +63,8 @@ export default function Dashboard() {
 
     if (error) {
       console.error('Error al actualizar:', error)
-      // Si falla, revertimos el cambio visualmente
       alert('No se pudo actualizar el estado.')
+      // Revertir si quisieras ser muy estricto, pero generalmente basta con el alert
     }
   }
 
@@ -100,8 +101,14 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* 📊 ESTADÍSTICAS (Se actualizan solas porque usan 'projects') */}
+        {/* 📊 ESTADÍSTICAS GENERALES */}
         {!loading && <DashboardStats projects={projects} />}
+
+        {/* 📈 NUEVO: GRÁFICO DE TENDENCIAS */}
+        {/* Solo lo mostramos si ya terminó de cargar y hay al menos un proyecto */}
+        {!loading && projects.length > 0 && (
+           <IncomeChart projects={projects} />
+        )}
 
         {/* Banner PRO */}
         <div className="relative group overflow-hidden rounded-[2rem]">
@@ -123,7 +130,7 @@ export default function Dashboard() {
             </div>
         </div>
 
-        {/* LISTA (Le pasamos los datos y las funciones de control) */}
+        {/* LISTA DE PROYECTOS */}
         <div className="pt-4">
           <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-3">
             <span className="w-2 h-8 bg-green-500 rounded-full"></span>
