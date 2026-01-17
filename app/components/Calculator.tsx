@@ -1,29 +1,30 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import LimitModal from './LimitModal' // Importamos el modal
+import LimitModal from './LimitModal' 
 
 export default function Calculator() {
-  const [name, setName] = useState('')
+  // --- 1. ESTADOS DE DATOS ---
   const [hours, setHours] = useState(10)
-  const [rate, setRate] = useState(25000)
+  const [hourRate, setHourRate] = useState(25000)
   const [expenses, setExpenses] = useState(5000)
   const [margin, setMargin] = useState(30)
-  const [includeIVA, setIncludeIVA] = useState(true)
-  
-  // Estados para el límite
-  const [projectCount, setProjectCount] = useState(0)
-  const [showLimitModal, setShowLimitModal] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-  
+  const [iva, setIva] = useState(true)
+
+  // --- 2. ESTADOS DE LÓGICA & UI ---
   const [supabase] = useState(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   ))
+  const [userId, setUserId] = useState<string | null>(null)
+  const [projectCount, setProjectCount] = useState(0)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [animate, setAnimate] = useState(false) // Animación del precio
 
-  // 1. Al cargar, verificamos cuántos proyectos tiene el usuario
+  // --- 3. CARGAR USUARIO Y LÍMITES ---
   useEffect(() => {
-    const checkUserLimits = async () => {
+    const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         setUserId(session.user.id)
@@ -35,158 +36,247 @@ export default function Calculator() {
         setProjectCount(count || 0)
       }
     }
-    checkUserLimits()
+    checkUser()
   }, [supabase])
 
-  // Lógica Matemática
-  const laborCost = hours * rate
-  const baseCost = laborCost + expenses
-  const marginAmount = baseCost * (margin / 100)
-  const subtotalNeto = baseCost + marginAmount
-  const ivaAmount = includeIVA ? subtotalNeto * 0.19 : 0
-  const total = subtotalNeto + ivaAmount
+  // --- 4. CÁLCULOS MATEMÁTICOS ---
+  const basePrice = hours * hourRate + expenses
+  const marginValue = basePrice * (margin / 100)
+  const subtotal = basePrice + marginValue
+  const ivaValue = iva ? subtotal * 0.19 : 0
+  const total = subtotal + ivaValue
 
+  // Efecto visual al cambiar el total
+  useEffect(() => {
+    setAnimate(true)
+    const timer = setTimeout(() => setAnimate(false), 300)
+    return () => clearTimeout(timer)
+  }, [total])
+
+  // --- 5. FUNCIÓN: COPIAR PROPUESTA (WhatsApp Style) ---
+  const copyToClipboard = () => {
+    const text = `
+📄 *PRESUPUESTO ESTIMADO*
+------------------------------------
+🔹 *Servicios Profesionales:*
+• Horas estimadas: ${hours} hrs
+• Tarifa base: $${(hours * hourRate).toLocaleString('es-CL')}
+
+🔹 *Costos Operacionales:*
+• Insumos/Software: $${expenses.toLocaleString('es-CL')}
+
+------------------------------------
+💰 *Subtotal Neto:* $${Math.round(subtotal).toLocaleString('es-CL')}
+${iva ? `🏛 *IVA (19%):* $${Math.round(ivaValue).toLocaleString('es-CL')}` : ''}
+------------------------------------
+✅ *TOTAL FINAL:* $${total.toLocaleString('es-CL')}
+
+_Generado con PriceCalc_ 🚀
+    `.trim()
+
+    navigator.clipboard.writeText(text)
+    // Feedback visual simple (podrías usar un toast, pero alert funciona bien por ahora)
+    alert('📋 ¡Propuesta copiada! Lista para pegar en WhatsApp o Correo.')
+  }
+
+  // --- 6. FUNCIÓN: GUARDAR EN HISTORIAL (Base de Datos) ---
   const handleSave = async () => {
-    if (!userId) return alert('⚠️ Debes iniciar sesión para guardar.')
-    if (!name) return alert('⚠️ Por favor, ponle un nombre al proyecto.')
-
-    // 2. EL CANDADO: Si tiene 3 o más proyectos, mostramos el modal y NO guardamos
-    // (Aquí podrías agregar "&& !isPro" si tuvieras el campo en la BD)
+    if (!userId) return alert('⚠️ Inicia sesión para guardar tu presupuesto.')
+    
+    // Verificación del límite (Plan Free: Máx 3)
     if (projectCount >= 3) {
       setShowLimitModal(true)
       return
     }
 
+    setSaving(true)
     const { error } = await supabase.from('projects').insert({
       user_id: userId,
-      name,
-      pocket_money: subtotalNeto,
+      name: `Proyecto ${new Date().toLocaleDateString('es-CL')} - ${new Date().getHours()}:${new Date().getMinutes()}`,
+      pocket_money: subtotal,
       total_price: total,
-      details: { hours, rate, expenses, margin, include_iva: includeIVA, iva_amount: ivaAmount }
+      details: { 
+        hours, 
+        rate: hourRate, 
+        expenses, 
+        margin, 
+        include_iva: iva, 
+        iva_amount: ivaValue 
+      }
     })
 
     if (!error) {
-      window.location.href = '/dashboard'
+      window.location.href = '/dashboard' // Redirige al éxito
     } else {
-      alert('Error al guardar')
+      alert('Error al guardar: ' + error.message)
     }
+    setSaving(false)
   }
-
-  // Estilos
-  const inputContainerStyle = "relative group"
-  const iconStyle = "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold group-focus-within:text-green-500 transition-colors"
-  const inputStyle = "w-full bg-zinc-900 border border-zinc-800 p-4 pl-10 rounded-xl text-white outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all font-medium"
-  const labelStyle = "text-zinc-500 text-xs font-bold uppercase mb-2 block tracking-wider"
 
   return (
     <>
-      {/* El Modal vive aquí, invisible hasta que se active */}
       <LimitModal isOpen={showLimitModal} onClose={() => setShowLimitModal(false)} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+      <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
         
-        {/* COLUMNA IZQUIERDA */}
-        <div className="lg:col-span-7 space-y-8">
-          <div>
-            <label className={labelStyle}>Nombre del Proyecto</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-white focus:border-green-500 outline-none transition-all font-medium placeholder:text-zinc-600"
-              placeholder="Ej: Rediseño Sitio Web Corporativo..."
+        {/* === COLUMNA IZQUIERDA: INPUTS === */}
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold text-white">Configuración</h3>
+            <p className="text-sm text-slate-400">Define los parámetros de tu servicio.</p>
+          </div>
+
+          <div className="space-y-5">
+            <Field 
+              label="Horas estimadas" 
+              value={hours} 
+              onChange={setHours} 
+              placeholder="Ej: 10"
             />
-          </div>
+            
+            <Field 
+              label="Valor hora (CLP)" 
+              value={hourRate} 
+              onChange={setHourRate} 
+              placeholder="Ej: 25000"
+              isCurrency
+            />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={inputContainerStyle}>
-              <label className={labelStyle}>Horas estimadas</label>
-              <span className={iconStyle}>H</span>
-              <input type="number" value={hours} onChange={e => setHours(Number(e.target.value))} className={inputStyle} />
-            </div>
-            <div className={inputContainerStyle}>
-              <label className={labelStyle}>Valor Hora</label>
-              <span className={iconStyle}>$</span>
-              <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))} className={inputStyle} />
-            </div>
-          </div>
+            <Field 
+              label="Gastos extra (Software, insumos)" 
+              value={expenses} 
+              onChange={setExpenses} 
+              placeholder="Ej: 5000"
+              isCurrency
+            />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={inputContainerStyle}>
-              <label className={labelStyle}>Gastos / Software</label>
-              <span className={iconStyle}>$</span>
-              <input type="number" value={expenses} onChange={e => setExpenses(Number(e.target.value))} className={inputStyle} />
+            <div className="pt-2">
+              <div className="flex justify-between mb-2">
+                <label className="text-sm font-medium text-slate-400">Margen de ganancia</label>
+                <span className="text-sm font-bold text-green-400">{margin}%</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={margin} 
+                onChange={(e) => setMargin(Number(e.target.value))}
+                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+              />
             </div>
-            <div className={inputContainerStyle}>
-              <label className={labelStyle}>Margen de Ganancia</label>
-              <span className={iconStyle}>%</span>
-              <input type="number" value={margin} onChange={e => setMargin(Number(e.target.value))} className={inputStyle} />
-            </div>
-          </div>
 
-          <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition-colors" onClick={() => setIncludeIVA(!includeIVA)}>
-            <div>
-              <p className="font-bold text-white mb-1">¿Incluir IVA (19%)?</p>
-              <p className="text-xs text-zinc-500">Activa esto si emites factura.</p>
-            </div>
-            <div className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${includeIVA ? 'bg-green-500' : 'bg-zinc-700'}`}>
-              <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${includeIVA ? 'translate-x-6' : 'translate-x-0'}`} />
-            </div>
+            <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 bg-slate-800/50 hover:bg-slate-800 transition cursor-pointer group">
+              <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${iva ? 'bg-green-500 border-green-500' : 'border-slate-500 bg-transparent'}`}>
+                {iva && <svg className="w-3.5 h-3.5 text-black font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+              </div>
+              <input 
+                type="checkbox" 
+                className="hidden"
+                checked={iva}
+                onChange={e => setIva(e.target.checked)}
+              />
+              <span className="text-slate-300 group-hover:text-white transition">Aplicar IVA (19%)</span>
+            </label>
           </div>
         </div>
 
-        {/* COLUMNA DERECHA (RESUMEN) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-8">
-          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2rem] shadow-2xl shadow-black/50">
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">Resumen</h3>
-              {/* Contador visual discreto */}
-              <div className={`px-3 py-1 rounded-full text-xs font-bold border ${projectCount >= 3 ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
-                {projectCount}/3 Usados
+        {/* === COLUMNA DERECHA: RESULTADOS (STICKY CARD) === */}
+        <div className="relative">
+          <div className="sticky top-24 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl">
+            
+            <div className="space-y-4">
+              <ResultRow label="Costo base (Horas + Gastos)" value={basePrice} />
+              <ResultRow label="Tu Ganancia" value={marginValue} isGreen />
+              <div className="h-px bg-slate-700 my-2" />
+              <ResultRow label="Subtotal Neto" value={subtotal} />
+              {iva && <ResultRow label="IVA (19%)" value={ivaValue} />}
+            </div>
+
+            <div className="pt-4 border-t border-slate-600">
+              <p className="text-sm text-slate-400 mb-1">Precio sugerido al cliente</p>
+              <div className={`text-4xl md:text-5xl font-extrabold text-white transition-all duration-300 ${animate ? 'scale-105 text-green-400' : ''}`}>
+                ${total.toLocaleString('es-CL')}
               </div>
+            </div>
+
+            {/* --- ZONA DE ACCIONES (NUEVO DISEÑO DE BOTONES) --- */}
+            <div className="grid grid-cols-5 gap-3 pt-2">
+               {/* Botón 1: Copiar Propuesta (MVP) */}
+               <button 
+                 onClick={copyToClipboard}
+                 className="col-span-1 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all border border-slate-600 hover:border-slate-500 active:scale-95"
+                 title="Copiar resumen para WhatsApp"
+               >
+                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+               </button>
+
+               {/* Botón 2: Guardar (Principal) */}
+               <button 
+                 onClick={handleSave}
+                 disabled={saving}
+                 className="col-span-4 group relative overflow-hidden bg-gradient-to-r from-green-500 to-emerald-600 text-slate-950 font-bold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 <span className="relative z-10 flex items-center justify-center gap-2">
+                   {saving ? (
+                     'Guardando...'
+                   ) : (
+                     <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        Guardar Presupuesto
+                     </>
+                   )}
+                 </span>
+                 {/* Efecto de brillo */}
+                 {!saving && <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />}
+               </button>
             </div>
             
-            <div className="space-y-5 mb-8">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-zinc-400 font-medium">Costo base</span>
-                <span className="font-bold text-zinc-200">${baseCost.toLocaleString('es-CL')}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm py-3 border-y border-zinc-800/50">
-                <span className="text-green-500 font-bold flex items-center gap-2">
-                  <span className="bg-green-500/10 p-1 rounded text-xs">+{margin}%</span>
-                  Tu Ganancia
-                </span>
-                <span className="font-bold text-green-500 text-lg">+${Math.round(marginAmount).toLocaleString('es-CL')}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm pt-2">
-                <span className="text-zinc-400 font-medium">Subtotal Neto</span>
-                <span className="font-bold text-white">${Math.round(subtotalNeto).toLocaleString('es-CL')}</span>
-              </div>
-              {includeIVA && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-zinc-400 font-medium">IVA (19%)</span>
-                  <span className="font-bold text-zinc-300">${Math.round(ivaAmount).toLocaleString('es-CL')}</span>
-                </div>
+            <p className="text-center text-xs text-slate-500">
+              {userId ? (
+                <>Has usado <strong>{projectCount}</strong> de 3 cálculos gratuitos.</>
+              ) : (
+                'Inicia sesión para guardar historial.'
               )}
-            </div>
-
-            <div className="mb-8 pt-6 border-t border-zinc-800">
-              <p className="text-xs text-zinc-500 uppercase font-bold mb-2 tracking-wider">Total final</p>
-              <p className="text-5xl font-black text-green-500 tracking-tighter leading-none">
-                ${Math.round(total).toLocaleString('es-CL')}
-              </p>
-            </div>
-
-            <button 
-              onClick={handleSave}
-              className="w-full py-5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-green-600/20 active:scale-[0.98] text-lg"
-            >
-              <span>💾</span> Guardar presupuesto
-            </button>
+            </p>
           </div>
         </div>
 
       </div>
     </>
+  )
+}
+
+/* --- SUBCOMPONENTES REUTILIZABLES --- */
+
+function Field({ label, value, onChange, placeholder, isCurrency }: any) {
+  return (
+    <div className="space-y-1.5 group">
+      <label className="text-sm font-medium text-slate-400 group-focus-within:text-green-400 transition-colors">
+        {label}
+      </label>
+      <div className="relative">
+        {isCurrency && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+        )}
+        <input
+          type="number"
+          value={value === 0 ? '' : value}
+          onChange={e => onChange(Number(e.target.value))}
+          placeholder={placeholder}
+          className={`w-full bg-slate-900/50 border border-slate-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all placeholder:text-slate-600 ${isCurrency ? 'pl-7' : ''}`}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ResultRow({ label, value, isGreen }: any) {
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="text-slate-300">{label}</span>
+      <span className={`font-semibold text-lg ${isGreen ? 'text-green-400' : 'text-white'}`}>
+        ${Math.round(value).toLocaleString('es-CL')}
+      </span>
+    </div>
   )
 }
