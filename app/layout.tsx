@@ -1,34 +1,37 @@
-import './globals.css'
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google' // Importamos la fuente
-import Navbar from './components/Navbar'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Navbar from "./components/Navbar";
+// 🟢 CAMBIO IMPORTANTE: Importamos con llaves { } porque ahora es una exportación nombrada
+import { MobileNav } from "./components/MobileNav"; 
 
-// Configuramos la fuente Inter
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-})
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'PriceCalc - Calculadora para Freelancers',
-  description: 'Calcula tus presupuestos de forma profesional.',
-}
+  title: "PriceCalc - Calculadora Freelance",
+  description: "Calcula tus precios profesionales",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="es" className={inter.variable}>
-      {/* Aplicamos el fondo negro puro y la fuente a todo el body */}
-      <body className={`${inter.className} bg-black min-h-screen text-slate-200 antialiased selection:bg-green-500/30`}>
+    <html lang="es">
+      <body className={`${inter.className} bg-black text-white`}>
+        {/* Barra Superior (Escritorio) */}
         <Navbar />
-        <main className="flex-1">
+        
+        {/* Contenedor Principal */}
+        {/* 'pb-24' añade espacio abajo en móviles para que la barra no tape el contenido */}
+        <div className="pb-24 md:pb-0">
           {children}
-        </main>
+        </div>
+
+        {/* Barra Inferior (Solo Móviles) */}
+        <MobileNav />
       </body>
     </html>
-  )
+  );
 }
