@@ -45,13 +45,16 @@ export default function Navbar() {
           {/* Enlaces solo para usuarios logueados */}
           {user && (
             <>
+              {/* 👇 NUEVO LINK A CLIENTES 👇 */}
+              <Link href="/clients" className="text-white hover:text-green-400 transition">Clientes</Link>
+              
               <Link href="/dashboard" className="text-white hover:text-green-400 transition">Dashboard</Link>
               <Link href="/profile" className="text-white hover:text-green-400 transition">Mi Perfil</Link>
             </>
           )}
         </div>
 
-        {/* Botón de Acción */}
+        {/* Botón de Acción (Login / Logout) */}
         <div>
           {user ? (
             <button
