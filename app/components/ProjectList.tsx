@@ -1,9 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import { generatePDF } from '@/app/utils/generatePDF'
 
-// Definimos los estados posibles y sus colores
+// Definición de colores de estado
 const STATUS_CONFIG: any = {
   pending: { label: 'Pendiente', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
   approved: { label: 'Aprobado', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
@@ -11,65 +9,15 @@ const STATUS_CONFIG: any = {
   rejected: { label: 'Rechazado', color: 'bg-red-500/10 text-red-500 border-red-500/20' }
 }
 
-export default function ProjectList() {
-  const [projects, setProjects] = useState<any[]>([])
-  const [profile, setProfile] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  
-  const [supabase] = useState(() => createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ))
+// Definimos qué datos recibe este componente
+interface ProjectListProps {
+  projects: any[]
+  profile: any
+  onStatusChange: (id: string, newStatus: string) => void
+  onDelete: (id: string) => void
+}
 
-  // Cargar datos
-  useEffect(() => {
-    const fetchData = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      // 1. Proyectos
-      const { data: projectsData } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-      
-      if (projectsData) setProjects(projectsData)
-
-      // 2. Perfil (para el PDF)
-      const { data: profileData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-      
-      if (profileData) setProfile(profileData)
-      setLoading(false)
-    }
-    fetchData()
-  }, [supabase])
-
-  // Función para cambiar estado en BD
-  const updateStatus = async (projectId: string, newStatus: string) => {
-    // 1. Actualización optimista (UI primero)
-    setProjects(prev => prev.map(p => 
-      p.id === projectId ? { ...p, status: newStatus } : p
-    ))
-
-    // 2. Guardar en Supabase
-    await supabase
-      .from('projects')
-      .update({ status: newStatus })
-      .eq('id', projectId)
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Borrar este presupuesto?')) return
-    await supabase.from('projects').delete().eq('id', id)
-    setProjects(projects.filter(p => p.id !== id))
-  }
-
-  if (loading) return <div className="text-zinc-500 text-sm animate-pulse">Cargando historial...</div>
+export default function ProjectList({ projects, profile, onStatusChange, onDelete }: ProjectListProps) {
 
   if (projects.length === 0) {
     return (
@@ -95,11 +43,11 @@ export default function ProjectList() {
                 {project.name}
               </h4>
               
-              {/* SELECTOR DE ESTADO (Mini Dropdown) */}
+              {/* SELECTOR DE ESTADO CONECTADO AL DASHBOARD */}
               <select 
                 value={project.status || 'pending'}
-                onChange={(e) => updateStatus(project.id, e.target.value)}
-                className={`text-xs font-bold px-2 py-1 rounded border appearance-none cursor-pointer outline-none transition-colors ${STATUS_CONFIG[project.status || 'pending'].color}`}
+                onChange={(e) => onStatusChange(project.id, e.target.value)}
+                className={`text-xs font-bold px-2 py-1 rounded border appearance-none cursor-pointer outline-none transition-colors ${STATUS_CONFIG[project.status || 'pending']?.color || STATUS_CONFIG.pending.color}`}
               >
                 <option value="pending">🟡 Pendiente</option>
                 <option value="approved">🔵 Aprobado</option>
@@ -139,7 +87,7 @@ export default function ProjectList() {
               </button>
               
               <button 
-                onClick={() => handleDelete(project.id)}
+                onClick={() => onDelete(project.id)}
                 className="p-2.5 bg-zinc-800 text-zinc-400 rounded-lg hover:bg-red-500/20 hover:text-red-500 transition-colors"
                 title="Eliminar"
               >
